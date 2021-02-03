@@ -1,0 +1,13 @@
+﻿  compression-project.cpp
+  huffman coding.cpp
+D:\DSA\compression-project\compression-project\huffman coding.cpp(216,32): warning C4267: 'initializing': conversion from 'size_t' to 'us', possible loss of data
+D:\DSA\compression-project\compression-project\huffman coding.cpp(223,25): warning C4267: '=': conversion from 'size_t' to 'us', possible loss of data
+D:\DSA\compression-project\compression-project\huffman coding.cpp(267,22): warning C4244: 'initializing': conversion from 'uintmax_t' to 'size_t', possible loss of data
+D:\DSA\compression-project\compression-project\huffman coding.cpp(294,25): warning C4267: 'initializing': conversion from 'size_t' to 'us', possible loss of data
+D:\DSA\compression-project\compression-project\huffman coding.cpp(303,20): warning C4018: '<': signed/unsigned mismatch
+D:\DSA\compression-project\compression-project\huffman coding.cpp(306,46): warning C4018: '<': signed/unsigned mismatch
+D:\DSA\compression-project\compression-project\huffman coding.cpp(331,21): warning C4018: '<': signed/unsigned mismatch
+D:\DSA\compression-project\compression-project\huffman coding.cpp(526,23): warning C4267: 'initializing': conversion from 'size_t' to 'us', possible loss of data
+  manager.cpp
+  Generating Code...
+  compression-project.vcxproj -> D:\DSA\compression-project\Debug\compression-project.exe
