@@ -5,3 +5,7 @@
 #include<filesystem>
 #include"huffman coding.hpp"
 void test();
+void starter();
+void createarc();
+void decrypt();
+void info();

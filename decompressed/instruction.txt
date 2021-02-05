@@ -1,0 +1,12 @@
+                	
+
+what i write
+total chars (2bytes)
+each char (1 byte) lenght of code(2 bytes) - code
+total number of files in directory(1 if its a file) 2bytes
+now what we are reading right now 1-for file 0- for folder (1 byte)
+number of files in the current folder IF FOLDER(2 bytes)
+the lenght of the name of file/folder after it was coded (4 bytes)
+the name of the file coded 
+the lenght of the file IF FILE after it was coded (4 bytes)
+the actual file after it was coded

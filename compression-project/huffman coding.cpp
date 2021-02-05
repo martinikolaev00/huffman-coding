@@ -87,9 +87,9 @@ bool compare::operator()(huffNode* l, huffNode* r)
 	return (l->getfreq() > r->getfreq());
 }
 
-huffNode* maketree(fs::path path) /// works
+huffNode* maketree(std::vector<fs::path> paths) /// works
 {
-	int* characters = getcounts(path);
+	int* characters = getcounts(paths);
 	if (!characters)
 		throw std::logic_error("file seems broken");
 	minheap* pyramid = new minheap;
@@ -114,7 +114,7 @@ huffNode* maketree(fs::path path) /// works
 	
 }
 
-int* getcounts(std::filesystem::path path) /// goes through the entire directory and counts how many times we find each character in the file  - works
+int* getcounts(std::vector<fs::path> paths) /// goes through the entire directory and counts how many times we find each character in the file  - works
 {
 	int* freq_arr = new int[256];
 	for (int i = 0; i < 256; ++i)
@@ -122,36 +122,40 @@ int* getcounts(std::filesystem::path path) /// goes through the entire directory
 	freq_arr['?']++; /// hardcoding these 2 to make sure we will be able to translate filenames into codes later 
 	freq_arr['*']++;
 	char buff = 0;
-	if (fs::is_regular_file(path)) /// if the user only gave us a path to normal file
+	for (std::vector<fs::path>::iterator it = paths.begin(); it != paths.end(); ++it)
 	{
-		std::ifstream filee(path);
-		if (!filee.is_open())
+		if (fs::is_regular_file(*it)) /// if the user only gave us a path to normal file
 		{
-
-			throw fs::filesystem_error("Cant open: " + path.string(), std::error_code());
-		}
-		while (filee.good()) /// we simply count and mark the chars inside
-		{
-			filee.get(buff);
-			freq_arr[static_cast<int>(buff)]++;
-		}
-		filee.close();
-	}
-	else for (const fs::directory_entry& it : fs::recursive_directory_iterator(path)) /// but if he gave us path to directory we go recursively everywhere and to every file
-	{
-		if (it.is_regular_file())
-		{
-			std::ifstream freq(it.path());
-			if (!freq.is_open())
-				throw fs::filesystem_error("Cant open: " + path.string(), std::error_code());
-			while (freq.good())
+			std::ifstream filee(*it);
+			if (!filee.is_open())
 			{
-				freq.get(buff);
+
+				throw fs::filesystem_error("Cant open: " + (*it).string(), std::error_code());
+			}
+			while (filee.good()) /// we simply count and mark the chars inside
+			{
+				filee.get(buff);
 				freq_arr[static_cast<int>(buff)]++;
 			}
-			freq.close();
+			filee.close();
 		}
-		
+		else if(fs::is_directory(*it))
+			for (const fs::directory_entry& ite : fs::recursive_directory_iterator(*it)) /// but if he gave us path to directory we go recursively everywhere and to every file
+		{
+			if (ite.is_regular_file())
+			{
+				std::ifstream freq(ite.path());
+				if (!freq.is_open())
+					throw fs::filesystem_error("Cant open: " + (*it).string(), std::error_code());
+				while (freq.good())
+				{
+					freq.get(buff);
+					freq_arr[static_cast<int>(buff)]++;
+				}
+				freq.close();
+			}
+
+		}
 	}
 	return freq_arr;
 
@@ -215,7 +219,7 @@ void rec_lrr(huffNode* root, std::vector<bool>& current, booltable& codes, std::
 	current.pop_back();
 }
 
-std::ofstream& takeout(std::ofstream& out, booltable codes, std::vector<char> chars, fs::path path)
+std::ofstream& writecodes(std::ofstream& out, booltable codes, std::vector<char> chars, std::vector<fs::path> paths)
 {
 	us num_of_codes = chars.size();
 	us size = 0;
@@ -225,7 +229,7 @@ std::ofstream& takeout(std::ofstream& out, booltable codes, std::vector<char> ch
 	{
 		size = 0;
 		out.write((const char*)&chars[i], sizeof(char)); /// then we write the current char 
-		size = codes[i].size(); 
+		size = codes[i].size();
 		out.write((const char*)&size, sizeof(us)); /// then we write the lenght of the binary array
 		for (int j = 0; j < size;) /// then we write the code
 		{
@@ -237,28 +241,34 @@ std::ofstream& takeout(std::ofstream& out, booltable codes, std::vector<char> ch
 			}
 			out.write((const char*)&transporter, sizeof(unsigned char));
 		}
-	} /// after this loop is finished we've written our coding table 
-	/// now we write the number of files we have
-	if (fs::is_directory(path))
+	} /// after this loop is finished we've written our coding table and we will write the total number of files/folders all the paths have
+	us counter = 0; /// we consider there will be less than 60k files
+	for (std::vector<fs::path>::iterator path = paths.begin(); path != paths.end(); ++path)
 	{
-		us counter = 0; /// we consider there will be less than 30k files
-		for (const fs::directory_entry& it : fs::recursive_directory_iterator(path))
+		if (fs::is_directory(*path))
+		{
+			for (const fs::directory_entry& it : fs::recursive_directory_iterator(*path))
 				++counter;
-		out.write((const char*)&counter, sizeof(us));
+		}
+		else ++counter;
 	}
-	else
+	out.write((const char*)&counter, sizeof(us)); /// now we have written coding table and total number of files/folders
+	return out;
+}
+
+std::ofstream& takeout(std::ofstream& out, booltable codes, std::vector<char> chars, fs::path path)
+{ /// will call this function for each path that we have
+	if (fs::is_regular_file(path)) /// if the path is just a file , we write it 
 	{
-		short x = 1;
-		out.write((const char*)&x, sizeof(us)); /// if its just a file (not directory) that the user entered we write 1
 		bool f = true;
 		out.write((const char*)&f, sizeof(bool)); /// we write 1 to indacete its a file
 		 /// we write the size of the name after being converted into bool vector - inside writestrings 
 		writestrings(path.filename().string(), out, chars, codes); /// now we write the actual name of the file writtin in our code 
 		writefiles(path, out, chars, codes); ///write the file lenght in coded bits and finally we write the file itself
 		return out;
-	} /// after we wrote the number of files we start to iterate and write each one
+	}
 	bool isFile = false;
-	for (const fs::directory_entry& it : fs::recursive_directory_iterator(path))
+	for (const fs::directory_entry& it : fs::recursive_directory_iterator(path)) /// but if its a directory we iterate through it
 	{
 		if (!fs::is_directory(it)) /// if its not a folder 
 		{
@@ -383,7 +393,7 @@ std::ifstream& readfile(std::ifstream& in, fs::path writefileshere,translatetree
 	size_t len_name = 0;
 	in.read((char*)&len_name, sizeof(size_t)); /// now we read the lenght of the name of the file
 	code.resize(len_name);
-	readvector(in, code, len_name); /// read the actual name the file
+	readname(in, code, len_name); /// read the actual name the file
 	std::string name;
 	stringfromvector(name, code, 0, len_name, root); /// now we have the name of the file in name
 	std::ofstream currentfile(writefileshere.string() +"\\" + name); /// create the file
@@ -475,7 +485,7 @@ void buildtranslationtree(translatetree* root, std::vector<bool> code, char curr
 	}
 }
 
-void stringfromvector(std::string& input, std::vector<bool> code, us current_bit, us size, translatetree* root)
+void stringfromvector(std::string& input, std::vector<bool> code, us current_bit, size_t size, translatetree* root)
 {
 	for (; current_bit < size;) /// we make different recursion for each char to avoid
 	{ /// creating a very deep recursion and overflowing
@@ -485,7 +495,7 @@ void stringfromvector(std::string& input, std::vector<bool> code, us current_bit
 	
 }
 
-void charfromvec(std::string& input, std::vector<bool> code, us& current_bit, us size, translatetree* root)
+void charfromvec(std::string& input, std::vector<bool> code, us& current_bit, size_t size, translatetree* root)
 {
 	if (current_bit == size)
 	{
@@ -532,6 +542,18 @@ std::ifstream& readvector(std::ifstream& in, std::vector<bool>& code, us size)
 	return in;
 }
 
+std::ifstream& readname(std::ifstream& in, std::vector<bool>& code, size_t size)
+{
+	for (us j = 0; j < size;) /// and with this for we read our code out of the file
+	{
+		unsigned char holder;
+		in.read((char*)&holder, sizeof(unsigned char));
+		for (unsigned char mask = 1; mask > 0 && j < size; ++j, mask <<= 1)
+			code.at(j) = holder & mask;
+	}
+	return in;
+}
+
 std::ifstream& readwholefile(std::ifstream& in, std::vector<bool>& code, size_t size)
 {
 	for (us j = 0; j < size;) /// and with this for we read our code out of the file
@@ -547,7 +569,7 @@ std::ifstream& readwholefile(std::ifstream& in, std::vector<bool>& code, size_t 
 std::ofstream& fromvectofile(std::vector<bool> code, std::ofstream& out, translatetree* root,std::string name)
 {
 	std::string output; 
-	us size = code.size();
+	size_t size = code.size();
 	stringfromvector(output, code, 0, size, root);
 	out << output;
 	
@@ -568,7 +590,7 @@ std::ifstream& readfolder(std::ifstream& in, translatetree* root, fs::path write
 	in.read((char*)&len_name, sizeof(size_t));
 	code.clear(); 
 	code.resize(len_name); /// preparing code to read name
-	readvector(in, code, len_name);
+	readname(in, code, len_name); /// reading the name of folder
 	stringfromvector(name, code, 0, len_name, root);
 	fs::path direc_path = writefileshere.string() + "\\" + name;
 	fs::create_directory(direc_path);
