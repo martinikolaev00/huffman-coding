@@ -29,5 +29,8 @@
     <ClInclude Include="huffman coding.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="manager.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

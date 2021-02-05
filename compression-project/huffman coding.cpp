@@ -87,9 +87,9 @@ bool compare::operator()(huffNode* l, huffNode* r)
 	return (l->getfreq() > r->getfreq());
 }
 
-huffNode* maketree(std::string file)
+huffNode* maketree(fs::path path) /// works
 {
-	int* characters = getcounts(file);
+	int* characters = getcounts(path);
 	if (!characters)
 		throw std::logic_error("file seems broken");
 	minheap* pyramid = new minheap;
@@ -114,7 +114,7 @@ huffNode* maketree(std::string file)
 	
 }
 
-int* getcounts(std::filesystem::path path) /// goes through the entire directory and counts how many times we find each character in the file 
+int* getcounts(std::filesystem::path path) /// goes through the entire directory and counts how many times we find each character in the file  - works
 {
 	int* freq_arr = new int[256];
 	for (int i = 0; i < 256; ++i)
@@ -130,8 +130,9 @@ int* getcounts(std::filesystem::path path) /// goes through the entire directory
 
 			throw fs::filesystem_error("Cant open: " + path.string(), std::error_code());
 		}
-		while (filee>>buff) /// we simply count and mark the chars inside
+		while (filee.good()) /// we simply count and mark the chars inside
 		{
+			filee.get(buff);
 			freq_arr[static_cast<int>(buff)]++;
 		}
 		filee.close();
@@ -156,7 +157,7 @@ int* getcounts(std::filesystem::path path) /// goes through the entire directory
 
 }
 
-void make_huffman_code(minheap* pyramid) /// removing 2 tops from the pyramid and combining their freq into 1 new el and putting them as left and right leaves
+void make_huffman_code(minheap* pyramid) /// removing 2 tops from the pyramid and combining their freq into 1 new el and putting them as left and right leaves - works
 {	
 	
 	const huffNode* buff1 = pyramid->top(); pyramid->pop();
@@ -181,22 +182,22 @@ void create_codes(huffNode* root, booltable& codes, std::vector<char>& chars)
 	delete root;
 }
 
-size_t leafcount(huffNode* root)
+size_t leafcount(huffNode* root) /// works
 {
 	if (root == nullptr)
 		return 0;
-	else if (root->get_rightleaf() == nullptr && root->get_leftleaf() == nullptr)
+	else if (root->get_leftleaf() == nullptr && root->get_rightleaf() == nullptr)
 		return 1;
-	return (leafcount(root->get_leftleaf() + leafcount(root->get_rightleaf())));
+	return (leafcount(root->get_leftleaf()) + leafcount(root->get_rightleaf()));
 }
 
-void rec_lrr(huffNode* root, std::vector<bool> current, booltable codes, std::vector<char> chars)
+void rec_lrr(huffNode* root, std::vector<bool>& current, booltable& codes, std::vector<char>& chars)
 {
 	if (root->leaf())
 	{
 		codes.push_back(current);
 		chars.push_back(root->getdata());
-		current.erase((--current.end())); /// deleting the last ad	ded digit 0/1 and going back 1 step
+		current.pop_back(); /// deleting the last ad	ded digit 0/1 and going back 1 step
 		return;	 /// recursion will end at the most right leaf 
 	}
 	if (root->get_leftleaf() != nullptr)
@@ -209,6 +210,9 @@ void rec_lrr(huffNode* root, std::vector<bool> current, booltable codes, std::ve
 		current.push_back(true); /// 1 for right
 		rec_lrr(root->get_rightleaf(), current, codes, chars);
 	}
+	if (current.size() == 0) /// catching the corner case when we went through whole tree and try to pop again
+		return;
+	current.pop_back();
 }
 
 std::ofstream& takeout(std::ofstream& out, booltable codes, std::vector<char> chars, fs::path path)
@@ -219,8 +223,10 @@ std::ofstream& takeout(std::ofstream& out, booltable codes, std::vector<char> ch
 	out.write((const char*)&num_of_codes, sizeof(us)); /// 1st we write the amount of different chars
 	for (int i = 0; i < num_of_codes; ++i) /// then we start writing each row like  char size code
 	{
+		size = 0;
 		out.write((const char*)&chars[i], sizeof(char)); /// then we write the current char 
-		size = codes[i].size();  out.write((const char*)&size, sizeof(us)); /// then we write the lenght of the binary array
+		size = codes[i].size(); 
+		out.write((const char*)&size, sizeof(us)); /// then we write the lenght of the binary array
 		for (int j = 0; j < size; ++j) /// then we write the code
 		{
 			transporter = 0;
@@ -246,15 +252,9 @@ std::ofstream& takeout(std::ofstream& out, booltable codes, std::vector<char> ch
 		out.write((const char*)&x, sizeof(us)); /// if its just a file (not directory) that the user entered we write 1
 		bool f = true;
 		out.write((const char*)&f, sizeof(bool)); /// we write 1 to indacete its a file
-		try {
-			writelenght(path, out); /// now we write the lenght of the name of the file
-		}
-		catch (...)
-		{
-			throw std::logic_error("file with name" + path.filename().string() + "broke while writing to file");
-		} 
-		writestrings(path.filename().string(), out, chars, codes); /// now we write the actual name of the file writtin in our code
-		writefiles(path, out, chars, codes); /// and finally we write the file itself
+		 /// we write the size of the name after being converted into bool vector - inside writestrings 
+		writestrings(path.filename().string(), out, chars, codes); /// now we write the actual name of the file writtin in our code 
+		writefiles(path, out, chars, codes); ///write the file lenght in coded bits and finally we write the file itself
 		return out;
 	} /// after we wrote the number of files we start to iterate and write each one
 	bool isFile = false;
@@ -264,12 +264,9 @@ std::ofstream& takeout(std::ofstream& out, booltable codes, std::vector<char> ch
 		{
 			isFile = true;
 			out.write((const char*)&isFile, sizeof(bool)); /// 1 for file and 0 for folder
-			size_t  file_size = fs::file_size(it);
-			out.write((const char*)&file_size, sizeof(size_t)); /// we write the size of the current file
 			fs::path n = it.path().filename();
 			std::string name = path.string(); /// planning to write the the file/folder name's lenght 1st with just 1 byte so max lenght will be 255
-			writelenght(path, out);
-			/// now we will write the actual name but 1st have to tranform it according to our codes
+			/// now we will write the actual name but 1st have to tranform it according to our codes - inside writestrings
 			writestrings(name, out, chars, codes); /// this will write the actual name of the current file in our out file
 			writefiles(it, out, chars, codes); /// now we write the entire fail
 		}
@@ -281,26 +278,37 @@ std::ofstream& takeout(std::ofstream& out, booltable codes, std::vector<char> ch
 			for (fs::directory_entry ite : fs::directory_iterator(it))
 					cnt++;
 			out.write((const char*)&cnt, sizeof(us)); /// now we write how many elements does this folder have
-			writelenght(path, out); /// we write the lenght of the name of our folder
+			/// we write the lenght of the name of our folder after being coverted to bool vector - inside writestrings
 			writestrings(it.path().filename().string(), out, chars, codes); /// and we write the folder's name and thats it for folders
 		}
 	}
 	return out;
 }
 
-std::ofstream& writelenght(fs::path path, std::ofstream& out)
+std::ofstream& writelenght(std::string input, std::ofstream& out,std::vector<char> chars,booltable codes) /// works
 {
-	std::string name = path.string();
-	us size = name.length();
-	out.write((const char*)&size, sizeof(us)); /// writing the lenght of the filename
-	return out;
-	
+	std::vector<bool> output;
+	size_t size = input.length(), holder = 0, vessel = 0;
+	output.reserve(size); ///reserving minimum amount so we dont have to instantly resize
+	for (size_t i = 0; i < size; ++i)
+	{
+		holder = find(chars, input[i]); /// getting the index of the char remember chars[i]'s code is in codes[i]
+		if (holder == -1) /// should be impossible case
+		{
+			throw std::logic_error("needed code not found");
+		}
+		vessel = codes[holder].size();
+		for (int j = 0; j < vessel; ++j) /// kinda slow
+			output.push_back(codes[holder].at(j));
+	}
+	size = output.size();
+	out.write((const char*)&size, sizeof(size_t));
 }
 
-std::ofstream& writevector(std::vector<bool> input, std::ofstream& out)
+std::ofstream& writevector(std::vector<bool> input, std::ofstream& out) /// works
 {/// Note by the time we use this function we should have already written the size of the vector inside the file
 	size_t size = input.size(); 
-	for (int j = 0; j < size; ++j) /// then we write the code
+	for (int j = 0; j < size;) /// then we write the code
 	{
 		unsigned char transporter = 0;
 		for (unsigned char mask = 1; mask > 0 && j < size; mask <<= 1, ++j)
@@ -315,7 +323,7 @@ std::ofstream& writevector(std::vector<bool> input, std::ofstream& out)
 	return out;
 }
 
-std::ofstream& writestrings(std::string input, std::ofstream& out,std::vector<char> chars, booltable codes)
+std::ofstream& writestrings(std::string input, std::ofstream& out,std::vector<char> chars, booltable codes) /// works
 { ///now we convert that string using the codes into a bool vector and we push it in using writevector
 	std::vector<bool> output;
 	size_t size = input.length(), holder=0,vessel=0;
@@ -331,6 +339,8 @@ std::ofstream& writestrings(std::string input, std::ofstream& out,std::vector<ch
 		for (int j = 0; j < vessel; ++j) /// kinda slow
 			output.push_back(codes[holder].at(j));
 	}/// after this loop we should have all chars from string written in output using codes
+	size = output.size();
+	out.write((const char*)&size, sizeof(size_t));
 	try {
 		writevector(output, out);
 	}
@@ -350,10 +360,12 @@ std::ofstream& writefiles(fs::path path, std::ofstream& out, std::vector<char> c
 	std::ifstream file(path);
 	std::string output;
 	char buffer;
-	while (file >> buffer)
+	while (file.good())
 	{
+		file.get(buffer);
 		output.push_back(buffer);
 	}
+	output.pop_back(); /// before file.good breaks it actually writes the last char in file twice so we pop once
 	try {
 		writestrings(output, out, chars, codes);
 	}
@@ -368,10 +380,9 @@ std::ifstream& readfile(std::ifstream& in, fs::path writefileshere,translatetree
 {
 	std::vector<bool> code;
 	size_t file_size = 0;
-	in.read((char*)&file_size, sizeof(size_t)); /// we read the lenght of the file
-	us len_name = 0;
-	in.read((char*)&len_name, sizeof(us)); /// now we read the lenght of the name of the file
-	code.reserve(len_name);
+	size_t len_name = 0;
+	in.read((char*)&len_name, sizeof(size_t)); /// now we read the lenght of the name of the file
+	code.resize(len_name);
 	readvector(in, code, len_name); /// read the actual name the file
 	std::string name;
 	stringfromvector(name, code, 0, len_name, root); /// now we have the name of the file in name
@@ -380,7 +391,8 @@ std::ifstream& readfile(std::ifstream& in, fs::path writefileshere,translatetree
 	{
 		throw fs::filesystem_error("File with name " + name + " failed to open for writing", std::error_code());
 	}
-	code.clear(); code.reserve(file_size); /// preparing to read the file info and put all in code
+	in.read((char*)&file_size, sizeof(size_t)); /// we read the lenght of the file
+	code.clear(); code.resize(file_size); /// preparing to read the file info and put all in code
 	readwholefile(in, code, file_size); /// file info should be stored in code
 	fromvectofile(code, currentfile, root, name); /// writing upon the new created/opened file
 	currentfile.close();
@@ -435,7 +447,7 @@ void takein(std::ifstream& in, fs::path writefileshere)
 
 void buildtranslationtree(translatetree* root, std::vector<bool> code, char current, us current_bit,us len_code)
 {
-	if (current_bit + 1 == len_code)
+	if (current_bit == len_code)
 	{
 		root->data = current;
 		return;
@@ -472,8 +484,13 @@ void stringfromvector(std::string& input, std::vector<bool> code, us current_bit
 	
 }
 
-void charfromvec(std::string& input, std::vector<bool> code, us current_bit, us size, translatetree* root)
+void charfromvec(std::string& input, std::vector<bool> code, us& current_bit, us size, translatetree* root)
 {
+	if (current_bit == size)
+	{
+		input.push_back(root->data);
+		return;
+	}
 	bool hold = code.at(current_bit);
 	if (hold) /// 1 so we move right or we are in leaf
 		if (root->right) /// checks if we can move right
@@ -481,8 +498,6 @@ void charfromvec(std::string& input, std::vector<bool> code, us current_bit, us 
 		else /// we are in a leaf
 		{
 			input.push_back(root->data); /// since we didnt move at all we wont increase current bit
-			if (current_bit + 1 == size) /// this means we are at the last bit from the code and we are done
-				current_bit++; /// so we increase bit and when we return the for loop will break
 			return; /// we go back to the main root and go again
 		}
 	else /// 0 same as before but we move left
@@ -491,8 +506,6 @@ void charfromvec(std::string& input, std::vector<bool> code, us current_bit, us 
 		else
 		{
 			input.push_back(root->data);
-			if (current_bit + 1 == size)
-				current_bit++;
 			return;
 		}
 }
@@ -506,7 +519,7 @@ void killtree(translatetree* root)
 	delete root;
 }
 
-std::ifstream& readvector(std::ifstream& in, std::vector<bool>& code, us size)
+std::ifstream& readvector(std::ifstream& in, std::vector<bool>& code, us size) 
 { /// maybe add a string here to translate data while reading it to avoid vector becoming gigantic
 	for (us j = 0; j < size;) /// and with this for we read our code out of the file
 	{
@@ -518,7 +531,7 @@ std::ifstream& readvector(std::ifstream& in, std::vector<bool>& code, us size)
 	return in;
 }
 
-std::ifstream& readwholefile(std::ifstream& in, std::vector<bool>& code, unsigned long long size)
+std::ifstream& readwholefile(std::ifstream& in, std::vector<bool>& code, size_t size)
 {
 	for (us j = 0; j < size;) /// and with this for we read our code out of the file
 	{

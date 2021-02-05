@@ -1,9 +1,8 @@
 #include <iostream>
 #include<fstream>
-#include<filesystem>
+#include"manager.hpp";
 int main()
 {
-	
-
+	test();
 }
 
