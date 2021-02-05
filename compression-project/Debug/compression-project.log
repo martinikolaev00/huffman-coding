@@ -1,3 +1,14 @@
-﻿  manager.cpp
-D:\DSA\compression-project\compression-project\manager.cpp(2,9): warning C4067: unexpected tokens following preprocessor directive - expected a newline
+﻿  huffman coding.cpp
+D:\DSA\compression-project\compression-project\huffman coding.cpp(220,32): warning C4267: 'initializing': conversion from 'size_t' to 'us', possible loss of data
+D:\DSA\compression-project\compression-project\huffman coding.cpp(228,25): warning C4267: '=': conversion from 'size_t' to 'us', possible loss of data
+D:\DSA\compression-project\compression-project\huffman coding.cpp(301,21): warning C4018: '<': signed/unsigned mismatch
+D:\DSA\compression-project\compression-project\huffman coding.cpp(311,20): warning C4018: '<': signed/unsigned mismatch
+D:\DSA\compression-project\compression-project\huffman coding.cpp(314,46): warning C4018: '<': signed/unsigned mismatch
+D:\DSA\compression-project\compression-project\huffman coding.cpp(339,21): warning C4018: '<': signed/unsigned mismatch
+D:\DSA\compression-project\compression-project\huffman coding.cpp(386,31): warning C4267: 'argument': conversion from 'size_t' to 'us', possible loss of data
+D:\DSA\compression-project\compression-project\huffman coding.cpp(388,48): warning C4267: 'argument': conversion from 'size_t' to 'us', possible loss of data
+D:\DSA\compression-project\compression-project\huffman coding.cpp(550,23): warning C4267: 'initializing': conversion from 'size_t' to 'us', possible loss of data
+D:\DSA\compression-project\compression-project\huffman coding.cpp(571,31): warning C4267: 'argument': conversion from 'size_t' to 'us', possible loss of data
+D:\DSA\compression-project\compression-project\huffman coding.cpp(572,48): warning C4267: 'argument': conversion from 'size_t' to 'us', possible loss of data
+D:\DSA\compression-project\compression-project\huffman coding.cpp(306): warning C4715: 'writelenght': not all control paths return a value
   compression-project.vcxproj -> D:\DSA\compression-project\Debug\compression-project.exe

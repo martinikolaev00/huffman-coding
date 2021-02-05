@@ -227,7 +227,7 @@ std::ofstream& takeout(std::ofstream& out, booltable codes, std::vector<char> ch
 		out.write((const char*)&chars[i], sizeof(char)); /// then we write the current char 
 		size = codes[i].size(); 
 		out.write((const char*)&size, sizeof(us)); /// then we write the lenght of the binary array
-		for (int j = 0; j < size; ++j) /// then we write the code
+		for (int j = 0; j < size;) /// then we write the code
 		{
 			transporter = 0;
 			for (unsigned char mask = 1; mask > 0 && j < size; mask <<= 1, ++j)
@@ -265,7 +265,7 @@ std::ofstream& takeout(std::ofstream& out, booltable codes, std::vector<char> ch
 			isFile = true;
 			out.write((const char*)&isFile, sizeof(bool)); /// 1 for file and 0 for folder
 			fs::path n = it.path().filename();
-			std::string name = path.string(); /// planning to write the the file/folder name's lenght 1st with just 1 byte so max lenght will be 255
+			std::string name = n.string(); /// planning to write the the file/folder name's lenght 1st with just 1 byte so max lenght will be 255
 			/// now we will write the actual name but 1st have to tranform it according to our codes - inside writestrings
 			writestrings(name, out, chars, codes); /// this will write the actual name of the current file in our out file
 			writefiles(it, out, chars, codes); /// now we write the entire fail
@@ -285,7 +285,7 @@ std::ofstream& takeout(std::ofstream& out, booltable codes, std::vector<char> ch
 	return out;
 }
 
-std::ofstream& writelenght(std::string input, std::ofstream& out,std::vector<char> chars,booltable codes) /// works
+std::ofstream& writelenght(std::string input, std::ofstream& out,std::vector<char> chars,booltable codes)/// not used anywhere i think
 {
 	std::vector<bool> output;
 	size_t size = input.length(), holder = 0, vessel = 0;
@@ -340,7 +340,7 @@ std::ofstream& writestrings(std::string input, std::ofstream& out,std::vector<ch
 			output.push_back(codes[holder].at(j));
 	}/// after this loop we should have all chars from string written in output using codes
 	size = output.size();
-	out.write((const char*)&size, sizeof(size_t));
+	out.write((const char*)&size, sizeof(size_t)); /// writing the size of the string before the actual string
 	try {
 		writevector(output, out);
 	}
@@ -386,7 +386,7 @@ std::ifstream& readfile(std::ifstream& in, fs::path writefileshere,translatetree
 	readvector(in, code, len_name); /// read the actual name the file
 	std::string name;
 	stringfromvector(name, code, 0, len_name, root); /// now we have the name of the file in name
-	std::ofstream currentfile(writefileshere.string() +"\\" + name);
+	std::ofstream currentfile(writefileshere.string() +"\\" + name); /// create the file
 	if (!currentfile.is_open())
 	{
 		throw fs::filesystem_error("File with name " + name + " failed to open for writing", std::error_code());
@@ -440,6 +440,7 @@ void takein(std::ifstream& in, fs::path writefileshere)
 		else /// isFile will be 0 => folder
 		{
 			readfolder(in, root, writefileshere,i);
+			++i;
 		}
 	} /// after this loop we should have read all compressed files
 	killtree(root);
@@ -560,11 +561,13 @@ std::ofstream& fromvectofile(std::vector<bool> code, std::ofstream& out, transla
 std::ifstream& readfolder(std::ifstream& in, translatetree* root, fs::path writefileshere,us& total_number)
 {
 	bool file = 0;
-	us num_files = 0, len_name;
+	us num_files = 0;
+	size_t len_name;
 	std::string name; std::vector<bool> code;
 	in.read((char*)&num_files, sizeof(us)); /// read how many files the folder has
-	in.read((char*)&len_name, sizeof(us));
-	code.clear(); code.reserve(len_name); /// preparing code to read name
+	in.read((char*)&len_name, sizeof(size_t));
+	code.clear(); 
+	code.resize(len_name); /// preparing code to read name
 	readvector(in, code, len_name);
 	stringfromvector(name, code, 0, len_name, root);
 	fs::path direc_path = writefileshere.string() + "\\" + name;
@@ -577,7 +580,11 @@ std::ifstream& readfolder(std::ifstream& in, translatetree* root, fs::path write
 			readfile(in, direc_path, root);
 			total_number++;
 		}
-		else readfolder(in, root, direc_path,total_number);
+		else
+		{
+			readfolder(in, root, direc_path, total_number);
+			total_number++;
+		} 
 	}
 	
 	return in;
