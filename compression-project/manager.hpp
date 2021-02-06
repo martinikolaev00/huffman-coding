@@ -9,3 +9,4 @@ void starter();
 void createarc();
 void decrypt();
 void info();
+void extractfile(std::string filename, std::ifstream& in, fs::path writefileshere);

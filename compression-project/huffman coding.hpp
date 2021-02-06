@@ -75,7 +75,12 @@ std::ofstream&  fromvectofile(std::vector<bool> code, std::ofstream& out, transl
 std::ifstream&  readfolder(std::ifstream& in, translatetree* root, fs::path writefileshere,us& total_number);
 int				find(std::vector<char> chars, char wanted);
 void			takein(std::ifstream& in,fs::path writefileshere);
+void			takeonefile(std::ifstream& in, fs::path writefileshere, std::string filename);
+translatetree*  buildtree(std::ifstream& in);
 void			buildtranslationtree(translatetree* root, std::vector<bool> code, char current,us current_bit,us len_code);
 void			stringfromvector(std::string& input, std::vector<bool> code, us current_bit, size_t size, translatetree* root);
 void			charfromvec(std::string& input, std::vector<bool> code, us& current_bit, size_t size, translatetree* root);
 void			killtree(translatetree* root);
+void			print(std::ifstream& in);
+std::ifstream&	printfile(std::ifstream& in,translatetree* root);
+std::ifstream&  printfolder(std::ifstream& in, translatetree* root,us& total_number);

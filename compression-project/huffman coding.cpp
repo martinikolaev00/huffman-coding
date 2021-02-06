@@ -420,22 +420,7 @@ int find(std::vector<char> chars, char wanted)
 
 void takein(std::ifstream& in, fs::path writefileshere)
 {
-	us num_of_codes = 0;
-	in.read((char*)&num_of_codes, sizeof(us)); /// 1st we read the amount of codes we have
-	translatetree* root = new translatetree();
-	us len_of_code=0; char current;
-	std::vector<bool> code;
-	for (us i = 0; i < num_of_codes; ++i)
-	{
-		in.read((char*)&current, sizeof(char)); /// we read each char
-		in.read((char*)&len_of_code, sizeof(us)); /// then we have our lenght
-		code.clear();
-		code.resize(len_of_code);
-		readvector(in, code, len_of_code);
-		if (!in)
-			throw std::logic_error("takein broke while reading coding table on code number: " + i);
-		buildtranslationtree(root, code, current, 0, len_of_code); /// making our tree while reading codes from file
-	} /// after this we have written all codes and built our tree
+	translatetree* root = buildtree(in); /// we have read the booltable from file next thing is number of files in the archive	
 	us total_number = 0; /// number of all files in the compressed file
 	in.read((char*)&total_number, sizeof(us));
 	bool isFile = false;
@@ -454,6 +439,75 @@ void takein(std::ifstream& in, fs::path writefileshere)
 		}
 	} /// after this loop we should have read all compressed files
 	killtree(root);
+}
+
+void takeonefile(std::ifstream& in, fs::path writefileshere, std::string filename)
+{ /// will perform linear search through the file to find the one we are looking for and extract it. Could optimise it to logn later
+	translatetree* root = buildtree(in);
+	us total_files = 0;
+	size_t lenght = 0;
+	std::vector<bool> code;
+	in.read((char*)&total_files, sizeof(us));
+	bool isFile = false;
+	for (int i = 0; i < total_files;)
+	{
+		in.read((char*)&isFile, sizeof(bool));
+		if (isFile)
+		{
+			in.read((char*)&lenght, sizeof(size_t));
+			code.clear(); code.resize(lenght);
+			readname(in, code, lenght);
+			std::string name;
+			stringfromvector(name, code, 0, lenght, root);
+			if (name == filename)
+			{
+				in.read((char*)&lenght, sizeof(size_t)); /// reading the lenght of coded file
+				code.clear(); code.resize(lenght);
+				readwholefile(in, code, lenght);
+				std::ofstream currentfile(writefileshere.string() + "\\" + name);
+				if (!currentfile.is_open())
+				{
+					std::cout << "problems creating file " << name;
+					return;
+				}
+				fromvectofile(code, currentfile, root, name);
+				currentfile.close();
+				return;
+			}
+			else
+			{ /// that file is not what we are looking for so we gotta skip it and continue
+				in.read((char*)&lenght, sizeof(size_t)); /// since we already read the name we read the lenght of the file and ignore it
+				in.ignore(lenght); ++total_files;
+			}
+		}
+		else /// its a folder
+		{
+
+		}
+
+	}
+}
+
+
+translatetree* buildtree(std::ifstream& in)
+{
+	us num_of_codes = 0;
+	in.read((char*)&num_of_codes, sizeof(us)); /// 1st we read the amount of codes we have
+	translatetree* root = new translatetree();
+	us len_of_code = 0; char current;
+	std::vector<bool> code;
+	for (us i = 0; i < num_of_codes; ++i)
+	{
+		in.read((char*)&current, sizeof(char)); /// we read each char
+		in.read((char*)&len_of_code, sizeof(us)); /// then we have our lenght
+		code.clear();
+		code.resize(len_of_code);
+		readvector(in, code, len_of_code);
+		if (!in)
+			throw std::logic_error("takein broke while reading coding table on code number: " + i);
+		buildtranslationtree(root, code, current, 0, len_of_code); /// making our tree while reading codes from file
+	} /// after this we have written all codes and built our tree
+	return root;
 }
 
 void buildtranslationtree(translatetree* root, std::vector<bool> code, char current, us current_bit,us len_code)
@@ -528,6 +582,78 @@ void killtree(translatetree* root)
 	if (root->right)
 		killtree(root->right);
 	delete root;
+}
+
+void print(std::ifstream& in)
+{
+	translatetree* root = buildtree(in);
+	us total_number = 0; in.read((char*)&total_number, sizeof(us));
+	bool isFile = false;
+	for (us i = 0; i < total_number;)
+	{
+		in.read((char*)&isFile, sizeof(bool));
+		if (isFile)
+		{
+			printfile(in,root);
+			++i;
+		}
+		else
+		{
+			printfolder(in,root,i);
+			++i;
+		}
+	}
+	
+}
+
+std::ifstream& printfile(std::ifstream& in,translatetree* root)
+{
+	size_t lenght = 0; std::vector<bool> code;
+	in.read((char*)&lenght, sizeof(size_t)); /// read len of name
+	code.resize(lenght);
+	readname(in, code, lenght);
+	std::string name;
+	stringfromvector(name, code, 0, lenght, root);
+	std::cout << name;
+	in.read((char*)&lenght, sizeof(size_t)); /// len of file but in bits while being coded
+	code.clear(); code.resize(lenght); /// i gotta read the whole file to know it's lenght in actual bytes to ignore them
+	readwholefile(in, code, lenght); /// but if i read the whole file theres no reason to ingnore anything anyways
+	name.clear(); //name.resize(lenght);
+	stringfromvector(name, code, 0, lenght, root);
+	std::cout << std::endl;
+	return in;
+}
+
+std::ifstream& printfolder(std::ifstream& in, translatetree* root, us& total_number)
+{
+	us num_files = 0; size_t len_name;
+	in.read((char*)&num_files, sizeof(us)); /// count of files in folder
+	in.read((char*)&len_name, sizeof(size_t));
+	std::vector<bool> code; code.resize(len_name);
+	readname(in, code, len_name);
+	std::string name;
+	stringfromvector(name, code, 0, len_name, root);
+	std::cout << "Folder: " << name<<"\n{\n";
+	bool isFile = false;
+	for (us i = 0; i < num_files;)
+	{
+		in.read((char*)&isFile, sizeof(bool));
+		if (isFile)
+		{
+			printfile(in, root);
+			++total_number;
+			++i;
+		}
+		else
+		{
+			printfolder(in, root, total_number);
+			++total_number;
+			++i;
+		}
+	}
+	std::cout << "}\n";
+	return in;
+
 }
 
 std::ifstream& readvector(std::ifstream& in, std::vector<bool>& code, us size) 

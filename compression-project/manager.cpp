@@ -58,15 +58,43 @@ void createarc()
 
 void decrypt()
 {
-	std::cout << "Write the path to the compressed file\n"<< "An example of path D:\\DSA\\file.txt, you can use ..\\ to skip a parent folder. Write at least 1 parent folder.\n";
+	std::cout << "Write the path to the compressed file\n" << "An example of path D:\\DSA\\file.txt, you can use ..\\ to skip a parent folder. Write at least 1 parent folder.\n";
 	std::string dec;
 	std::cin >> dec;
+	std::cout << "Do you want to decompress all files? (y/n) \n";
+	char count; std::cin >> count;
 	std::ifstream in(dec, std::ios::binary);
-	fs::path writefileshere = "..\\..\\compression-project\\decompressed"; /// will allow user to write this path
-	takein(in, writefileshere);
+	std::string placement;
+	std::cout << "Write the path where you want to put the compressed files: ";
+	std::cin >> placement;
+	fs::path writefileshere; /// will allow user to write this path
+	writefileshere.assign(placement);
+	if (count == 'y')
+	{
+		takein(in, writefileshere);
+		in.close();
+	}
+	else if (count == 'n')
+	{
+		std::string filename;
+		std::cout << "Write the name of the file that you want to extract.(with extension)\n";
+		std::cin >> filename;
+		extractfile(filename, in,writefileshere); /// finish it 
+		in.close();
+	}
+}
+
+void info() /// fix ignores too much
+{
+	std::cout << "Write the path to the compressed file you want information about\n"<< "An example of path D:\\DSA\\file.txt, you can use ..\\ to skip a parent folder. Write at least 1 parent folder.\n";
+	std::string file; std::cin >> file;
+	fs::path path; path.assign(file);
+	std::ifstream in(path, std::ios::binary);
+	print(in);
 	in.close();
 }
 
-void info()
+void extractfile(std::string filename, std::ifstream& in, fs::path writefileshere)
 {
+	takeonefile(in, writefileshere, filename);
 }
